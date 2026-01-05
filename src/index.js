@@ -17,7 +17,13 @@ const PORT = process.env.PORT || 3421;
 
 // Middlewares globales
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: "*", // En producción podrías limitarlo a "https://exogena.zdevs.uk"
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
