@@ -7,7 +7,7 @@ package-lock.json  # Opcional: si usas npm, puedes dejarlo; si usas pnpm/yarn, i
 
 # Prisma
 prisma/migrations/  # No commitear migraciones si usas db pull (tu caso actual)
-.env                # ¡MUY IMPORTANTE! Nunca subir credenciales ni JWT_SECRET
+.env              # ¡MUY IMPORTANTE! Nunca subir credenciales ni JWT_SECRET
 
 # Logs
 logs
