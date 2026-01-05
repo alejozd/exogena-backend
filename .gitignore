@@ -1,0 +1,38 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json  # Opcional: si usas npm, puedes dejarlo; si usas pnpm/yarn, ignóralo
+
+# Prisma
+prisma/migrations/  # No commitear migraciones si usas db pull (tu caso actual)
+.env                # ¡MUY IMPORTANTE! Nunca subir credenciales ni JWT_SECRET
+
+# Logs
+logs
+*.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Build / Dist
+dist/
+build/
+
+# PM2
+.pm2/
+ecosystem.config.js  # Si creas uno para producción
+
+# Otros
+temp/
+tmp/
+*.tmp

@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js" 
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")  
+}
+
+model activaciones {
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  venta_id         BigInt    @db.UnsignedBigInt
+  mac_servidor     String    @db.VarChar(17)
+  clave_generada   String    @db.VarChar(32)
+  ip_origen        String?   @db.VarChar(45)
+  nombre_equipo    String?   @db.VarChar(100)
+  fecha_activacion DateTime? @default(now()) @db.DateTime(0)
+  observaciones    String?   @db.Text
+  deleted_at       DateTime? @db.DateTime(0)
+  ventas           ventas    @relation(fields: [venta_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_activaciones_venta")
+
+  @@unique([venta_id, mac_servidor], map: "uk_venta_mac_activa")
+  @@index([mac_servidor], map: "idx_mac")
+  @@index([venta_id], map: "idx_venta_activacion")
+  @@index([venta_id, fecha_activacion(sort: Desc)], map: "idx_venta_fecha")
+}
+
+model clientes {
+  id           BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  nit          String         @unique(map: "nit") @db.VarChar(20)
+  razon_social String         @db.VarChar(255)
+  email        String?        @unique(map: "email") @db.VarChar(255)
+  telefono     String?        @db.VarChar(20)
+  direccion    String?        @db.Text
+  vendedor_id  Int?           @db.UnsignedInt
+  activo       Boolean?       @default(true)
+  deleted_at   DateTime?      @db.DateTime(0)
+  created_at   DateTime?      @default(now()) @db.DateTime(0)
+  updated_at   DateTime?      @default(now()) @db.DateTime(0)
+  vendedores   vendedores?    @relation(fields: [vendedor_id], references: [id], onUpdate: NoAction, map: "fk_cliente_vendedor")
+  seriales_erp seriales_erp[]
+  ventas       ventas[]
+
+  @@index([activo], map: "idx_activo")
+  @@index([nit], map: "idx_nit")
+  @@index([razon_social], map: "idx_razon_social")
+  @@index([vendedor_id], map: "idx_vendedor")
+}
+
+model pagos {
+  id              BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  venta_id        BigInt             @db.UnsignedBigInt
+  monto_pagado    Decimal            @db.Decimal(12, 2)
+  fecha_pago      DateTime           @db.Date
+  metodo_pago     pagos_metodo_pago? @default(transferencia)
+  referencia_pago String?            @db.VarChar(100)
+  observaciones   String?            @db.Text
+  created_at      DateTime?          @default(now()) @db.DateTime(0)
+  updated_at      DateTime?          @default(now()) @db.DateTime(0)
+  deleted_at      DateTime?          @db.DateTime(0)
+  ventas          ventas             @relation(fields: [venta_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pagos_venta")
+
+  @@index([fecha_pago], map: "idx_fecha_pago")
+  @@index([metodo_pago], map: "idx_metodo_pago")
+  @@index([venta_id], map: "idx_venta_pago")
+}
+
+model seriales_erp {
+  id              BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  cliente_id      BigInt    @db.UnsignedBigInt
+  serial_erp      String    @unique(map: "unique_serial") @db.VarChar(255)
+  nombre_software String?   @db.VarChar(100)
+  activo          Boolean?  @default(true)
+  deleted_at      DateTime? @db.DateTime(0)
+  created_at      DateTime? @default(now()) @db.DateTime(0)
+  updated_at      DateTime? @default(now()) @db.DateTime(0)
+  clientes        clientes  @relation(fields: [cliente_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_seriales_cliente")
+  ventas          ventas[]
+
+  @@index([activo], map: "idx_activo")
+  @@index([cliente_id], map: "idx_cliente_serial")
+  @@index([serial_erp], map: "idx_serial_string")
+}
+
+model vendedores {
+  id         Int        @id @default(autoincrement()) @db.UnsignedInt
+  nombre     String     @db.VarChar(255)
+  telefono   String?    @db.VarChar(20)
+  email      String?    @unique(map: "email") @db.VarChar(255)
+  activo     Boolean    @default(true)
+  created_at DateTime   @default(now()) @db.DateTime(0)
+  updated_at DateTime   @default(now()) @db.DateTime(0)
+  clientes   clientes[]
+  ventas     ventas[]
+}
+
+model ventas {
+  id            BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  cliente_id    BigInt              @db.UnsignedBigInt
+  vendedor_id   Int?                @db.UnsignedInt
+  serial_erp_id BigInt              @db.UnsignedBigInt
+  ano_gravable  Int
+  ano_venta     Int
+  fecha_venta   DateTime            @db.Date
+  valor_total   Decimal             @default(0.00) @db.Decimal(12, 2)
+  estado_pago   ventas_estado_pago? @default(pendiente)
+  observaciones String?             @db.Text
+  created_at    DateTime?           @default(now()) @db.DateTime(0)
+  updated_at    DateTime?           @default(now()) @db.DateTime(0)
+  deleted_at    DateTime?           @db.DateTime(0)
+  activaciones  activaciones[]
+  pagos         pagos[]
+  clientes      clientes            @relation(fields: [cliente_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ventas_cliente")
+  seriales_erp  seriales_erp        @relation(fields: [serial_erp_id], references: [id], onUpdate: NoAction, map: "fk_ventas_serial_erp")
+  vendedores    vendedores?         @relation(fields: [vendedor_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ventas_vendedor")
+
+  @@unique([serial_erp_id, ano_gravable], map: "uk_licencia_unica")
+  @@index([ano_gravable], map: "idx_ano_gravable")
+  @@index([ano_venta], map: "idx_ano_venta")
+  @@index([cliente_id], map: "idx_cliente_venta")
+  @@index([estado_pago], map: "idx_estado_pago")
+  @@index([serial_erp_id, ano_gravable], map: "idx_serial_ano")
+  @@index([vendedor_id], map: "idx_vendedor_venta")
+}
+
+model usuarios {
+  id         Int           @id @default(autoincrement()) @db.UnsignedInt
+  nombre     String        @db.VarChar(100)
+  email      String        @unique(map: "email") @db.VarChar(255)
+  password   String        @db.VarChar(255)
+  rol        usuarios_rol? @default(admin)
+  activo     Boolean?      @default(true)
+  created_at DateTime?     @default(now()) @db.DateTime(0)
+}
+
+enum pagos_metodo_pago {
+  transferencia
+  efectivo
+  consignacion
+  otro
+}
+
+enum ventas_estado_pago {
+  pendiente
+  parcial
+  completado
+}
+
+enum usuarios_rol {
+  admin
+  vendedor
+}
