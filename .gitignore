@@ -3,11 +3,11 @@ node_modules/
 npm-debug.log
 yarn-debug.log
 yarn-error.log
-package-lock.json  # Opcional: si usas npm, puedes dejarlo; si usas pnpm/yarn, ignóralo
+package-lock.json
+.env
 
 # Prisma
 prisma/migrations/  # No commitear migraciones si usas db pull (tu caso actual)
-.env              # ¡MUY IMPORTANTE! Nunca subir credenciales ni JWT_SECRET
 
 # Logs
 logs
