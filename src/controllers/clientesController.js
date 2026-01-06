@@ -14,10 +14,14 @@ const clientesController = {
         include: {
           vendedores: true,
           seriales_erp: {
-            where: { deleted_at: null }, // Solo seriales activos
+            where: { deleted_at: null },
+          },
+          // Entramos por ventas para llegar a las activaciones
+          ventas: {
+            where: { deleted_at: null },
             include: {
               activaciones: {
-                where: { deleted_at: null }, // Solo activaciones no eliminadas
+                where: { deleted_at: null },
               },
             },
           },
@@ -25,6 +29,7 @@ const clientesController = {
       });
       res.json(clientes);
     } catch (error) {
+      console.error("Error Prisma:", error); // Esto te dirá en consola si falta algún nombre
       res.status(500).json({ error: "Error al obtener clientes" });
     }
   },
