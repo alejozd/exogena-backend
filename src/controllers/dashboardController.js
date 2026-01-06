@@ -3,7 +3,12 @@ const prisma = require("../config/db");
 const dashboardController = {
   getStats: async (req, res) => {
     try {
-      // 1. Conteo de entidades básicas
+      // 1. Obtener el año del query string (ej: ?ano=2024)
+      // Si no viene, usamos el año actual
+      const { ano } = req.query;
+      const anoFiltro = ano ? parseInt(ano) : new Date().getFullYear();
+
+      // 2. Conteo de entidades básicas (Totales globales)
       const [totalClientes, totalVendedores, totalSeriales] = await Promise.all(
         [
           prisma.clientes.count({ where: { deleted_at: null } }),
@@ -12,28 +17,36 @@ const dashboardController = {
         ]
       );
 
-      // 2. Resumen Financiero
+      // 3. Resumen Financiero FILTRADO por año
       const ventas = await prisma.ventas.findMany({
-        where: { deleted_at: null },
-        include: { pagos: { where: { deleted_at: null } } },
+        where: {
+          deleted_at: null,
+          ano_gravable: anoFiltro, // <-- Filtro por año
+        },
+        include: {
+          pagos: { where: { deleted_at: null } },
+        },
       });
 
       let facturacionTotal = 0;
       let recaudoTotal = 0;
 
       ventas.forEach((v) => {
-        facturacionTotal += parseFloat(v.valor_total);
+        facturacionTotal += parseFloat(v.valor_total || 0);
         v.pagos.forEach((p) => {
-          recaudoTotal += parseFloat(p.monto_pagado);
+          recaudoTotal += parseFloat(p.monto_pagado || 0);
         });
       });
 
-      // 3. Ventas por año gravable (para una gráfica)
+      // 4. Ventas por año gravable (Histórico para la gráfica)
+      // Esta la dejamos sin filtrar por el año seleccionado para que la gráfica
+      // muestre la comparativa de todos los años disponibles
       const ventasPorAno = await prisma.ventas.groupBy({
         by: ["ano_gravable"],
         _count: { id: true },
         _sum: { valor_total: true },
         where: { deleted_at: null },
+        orderBy: { ano_gravable: "asc" },
       });
 
       res.json({
@@ -43,6 +56,7 @@ const dashboardController = {
           seriales_activos: totalSeriales,
         },
         finanzas: {
+          ano_consultado: anoFiltro,
           total_facturado: facturacionTotal,
           total_recaudado: recaudoTotal,
           cartera_pendiente: facturacionTotal - recaudoTotal,
@@ -54,7 +68,7 @@ const dashboardController = {
         },
       });
     } catch (error) {
-      console.error(error);
+      console.error("Error en dashboardController:", error);
       res.status(500).json({ error: "Error al generar estadísticas" });
     }
   },
