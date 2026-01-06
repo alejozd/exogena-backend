@@ -7,6 +7,8 @@ router.use(verifyToken);
 
 router.get("/", ventasController.getAll);
 router.get("/cliente/:clienteId", ventasController.getByCliente);
+router.get("/:id", ventasController.getById);
 router.post("/", ventasController.create);
+router.put("/:id", ventasController.update);
 
 module.exports = router;

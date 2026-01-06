@@ -140,6 +140,64 @@ const ventasController = {
       res.status(500).json({ error: "Error al buscar ventas del cliente" });
     }
   },
+
+  // Obtener una venta por su ID
+  getById: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const venta = await prisma.ventas.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          clientes: true,
+          vendedores: true,
+          seriales_erp: true,
+        },
+      });
+
+      if (!venta || venta.deleted_at) {
+        return res.status(404).json({ error: "Venta no encontrada" });
+      }
+
+      // IMPORTANTE: Convertir BigInt a String/Number para que JSON no falle
+      const formattedVenta = {
+        ...venta,
+        cliente_id: venta.cliente_id.toString(),
+        serial_erp_id: venta.serial_erp_id.toString(),
+      };
+
+      res.json(formattedVenta);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al obtener la venta" });
+    }
+  },
+
+  // Actualizar una venta existente
+  update: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const data = req.body;
+
+      const ventaActualizada = await prisma.ventas.update({
+        where: { id: parseInt(id) },
+        data: {
+          cliente_id: BigInt(data.cliente_id),
+          vendedor_id: data.vendedor_id ? parseInt(data.vendedor_id) : null,
+          serial_erp_id: BigInt(data.serial_erp_id),
+          ano_gravable: parseInt(data.ano_gravable),
+          ano_venta: parseInt(data.ano_venta),
+          fecha_venta: new Date(data.fecha_venta),
+          valor_total: parseFloat(data.valor_total),
+          observaciones: data.observaciones,
+        },
+      });
+
+      res.json(ventaActualizada);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al actualizar la venta" });
+    }
+  },
 };
 
 module.exports = ventasController;
