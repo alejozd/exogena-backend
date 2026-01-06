@@ -59,6 +59,26 @@ const serialesController = {
     }
   },
 
+  // Actualizar serial
+  update: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { serial_erp, nombre_software, activo, cliente_id } = req.body;
+      const actualizado = await prisma.seriales_erp.update({
+        where: { id: BigInt(id) },
+        data: {
+          serial_erp,
+          nombre_software,
+          activo: activo === false || activo === 0 ? false : true,
+          cliente_id: BigInt(cliente_id),
+        },
+      });
+      res.json(actualizado);
+    } catch (error) {
+      res.status(500).json({ error: "Error al actualizar el serial" });
+    }
+  },
+
   // Borrado lógico
   delete: async (req, res) => {
     try {
