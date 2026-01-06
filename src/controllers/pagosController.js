@@ -63,7 +63,11 @@ const pagosController = {
           deleted_at: null,
         },
       });
-      res.json(pagos);
+      const formattedPagos = pagos.map((p) => ({
+        ...p,
+        venta_id: p.venta_id.toString(),
+      }));
+      res.json(formattedPagos);
     } catch (error) {
       res.status(500).json({ error: "Error al buscar pagos de la venta" });
     }
