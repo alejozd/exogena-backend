@@ -15,6 +15,11 @@ const clientesController = {
           vendedores: true,
           seriales_erp: {
             where: { deleted_at: null }, // Solo seriales activos
+            include: {
+              activaciones: {
+                where: { deleted_at: null }, // Solo activaciones no eliminadas
+              },
+            },
           },
         },
       });
