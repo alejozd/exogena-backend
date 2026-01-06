@@ -11,6 +11,7 @@ const serialesRoutes = require("./routes/serialesRoutes");
 const ventasRoutes = require("./routes/ventasRoutes");
 const pagosRoutes = require("./routes/pagosRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const activacionRoutes = require("./routes/ActivacionRoutes");
 const authRoutes = require("./routes/authRoutes");
 
 const app = express();
@@ -35,6 +36,7 @@ app.use("/api/seriales", serialesRoutes);
 app.use("/api/ventas", ventasRoutes);
 app.use("/api/pagos", pagosRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/activaciones", activacionRoutes);
 app.use("/api/auth", authRoutes);
 
 // Ruta de salud
