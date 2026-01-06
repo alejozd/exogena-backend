@@ -61,6 +61,36 @@ const vendedoresController = {
       res.status(500).json({ error: "Error al buscar el vendedor" });
     }
   },
+
+  // Actualizar un vendedor
+  update: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { nombre, email, telefono, activo } = req.body;
+      const vendedorActualizado = await prisma.vendedores.update({
+        where: { id: parseInt(id) },
+        data: { nombre, email, telefono, activo },
+      });
+      res.json(vendedorActualizado);
+    } catch (error) {
+      res.status(500).json({ error: "Error al actualizar vendedor" });
+    }
+  },
+
+  // Eliminar (O desactivar)
+  delete: async (req, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.vendedores.delete({ where: { id: parseInt(id) } });
+      res.json({ message: "Vendedor eliminado correctamente" });
+    } catch (error) {
+      res
+        .status(500)
+        .json({
+          error: "No se puede eliminar: el vendedor tiene registros asociados",
+        });
+    }
+  },
 };
 
 module.exports = vendedoresController;
