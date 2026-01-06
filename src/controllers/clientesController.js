@@ -86,12 +86,31 @@ const clientesController = {
   update: async (req, res) => {
     try {
       const { id } = req.params;
+      const {
+        nit,
+        razon_social,
+        email,
+        telefono,
+        direccion,
+        activo,
+        vendedor_id,
+      } = req.body;
+
       const clienteActualizado = await prisma.clientes.update({
         where: { id: BigInt(id) },
-        data: req.body,
+        data: {
+          nit,
+          razon_social,
+          email,
+          telefono,
+          direccion,
+          activo: activo == 1 || activo === true ? true : false,
+          vendedor_id: vendedor_id ? parseInt(vendedor_id) : null,
+        },
       });
       res.json(clienteActualizado);
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Error al actualizar cliente" });
     }
   },
