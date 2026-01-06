@@ -4,38 +4,79 @@ const ventasController = {
   // Obtener todas las ventas con sus relaciones
   getAll: async (req, res) => {
     try {
+      // 1. Extraemos el año de los query params (ej: /ventas?ano=2024)
+      const { ano } = req.query;
+
       const ventas = await prisma.ventas.findMany({
-        where: { deleted_at: null },
+        where: {
+          deleted_at: null,
+          // 2. Si viene el año, filtramos por ano_venta, si no, trae todos
+          ...(ano && { ano_venta: parseInt(ano) }),
+        },
         include: {
-          clientes: { select: { razon_social: true, nit: true } },
-          vendedores: { select: { nombre: true } },
-          seriales_erp: { select: { serial_erp: true, nombre_software: true } },
-          pagos: { where: { deleted_at: null } }, // Traemos sus pagos
+          clientes: {
+            select: {
+              razon_social: true,
+              nit: true,
+            },
+          },
+          vendedores: {
+            select: {
+              nombre: true,
+            },
+          },
+          seriales_erp: {
+            select: {
+              serial_erp: true,
+              nombre_software: true,
+            },
+          },
+          // Traemos los pagos asociados que no estén eliminados
+          pagos: {
+            where: { deleted_at: null },
+          },
+        },
+        orderBy: {
+          fecha_venta: "desc", // Ordenar por las más recientes primero
         },
       });
 
-      // Calculamos el saldo para cada venta antes de enviar la respuesta
+      // 3. Mapeo para calcular saldos y estados financieros
       const ventasConSaldo = ventas.map((venta) => {
+        // Sumamos todos los montos de la tabla pagos asociados a esta venta
         const totalPagado = venta.pagos.reduce(
-          (acc, pago) => acc + parseFloat(pago.monto_pagado),
+          (acc, pago) => acc + parseFloat(pago.monto_pagado || 0),
           0
         );
-        const valorVenta = parseFloat(venta.valor_total);
+
+        const valorVenta = parseFloat(venta.valor_total || 0);
+        const saldoPendiente = valorVenta - totalPagado;
 
         return {
           ...venta,
           resumen_financiero: {
             total_venta: valorVenta,
             total_pagado: totalPagado,
-            saldo_pendiente: valorVenta - totalPagado,
+            saldo_pendiente: saldoPendiente,
+            // Estado basado en el saldo
             esta_paga: totalPagado >= valorVenta,
+            estado_texto:
+              totalPagado >= valorVenta
+                ? "PAGADA"
+                : totalPagado > 0
+                ? "PARCIAL"
+                : "PENDIENTE",
           },
         };
       });
 
       res.json(ventasConSaldo);
     } catch (error) {
-      res.status(500).json({ error: "Error al obtener ventas con saldos" });
+      console.error("Error en getAll ventas:", error);
+      res.status(500).json({
+        error: "Error al obtener ventas con saldos",
+        details: error.message,
+      });
     }
   },
 
