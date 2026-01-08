@@ -1,16 +1,35 @@
+const crypto = require("crypto");
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
+
+// --- FUNCIONES AUXILIARES (Indispensables) ---
+const decodeBase64 = (str) => Buffer.from(str, "base64").toString("utf-8");
+const generateMD5Hash = (data) =>
+  crypto.createHash("md5").update(data).digest("hex").toUpperCase();
+
 exports.generarClaveDesdeSerial = async (req, res) => {
   try {
     const { serial } = req.body;
+
     if (!serial)
       return res.status(400).json({ error: "El serial es requerido." });
 
     // 1. Decodificación
     const pistaDos = "ZS8Q5TKU0";
-    const decodedData = decodeBase64(serial);
+    let decodedData;
+    try {
+      decodedData = decodeBase64(serial);
+    } catch (e) {
+      return res.status(400).json({ error: "El formato Base64 es inválido." });
+    }
+
     const partes = decodedData.split(pistaDos);
 
-    if (partes.length < 2)
-      return res.status(400).json({ error: "Formato de serial inválido." });
+    if (partes.length < 2) {
+      return res
+        .status(400)
+        .json({ error: "Formato de serial inválido (Pista no encontrada)." });
+    }
 
     const serialERP = partes[0];
     const resto = partes[1];
@@ -21,7 +40,7 @@ exports.generarClaveDesdeSerial = async (req, res) => {
 
     // 2. VALIDACIÓN PASO A PASO
 
-    // A. Buscar el serial sin filtros de "activo" para saber si existe
+    // A. Buscar el serial (sin filtros de activo aún)
     const registroSerial = await prisma.seriales_erp.findFirst({
       where: {
         serial_erp: serialERP,
@@ -33,22 +52,24 @@ exports.generarClaveDesdeSerial = async (req, res) => {
       },
     });
 
+    // Diagnóstico detallado
     if (!registroSerial) {
       return res
         .status(404)
         .json({
-          error: "El Serial ERP ingresado no existe en la base de datos.",
+          error: "El Serial ERP ingresado no existe en nuestra base de datos.",
         });
     }
 
-    // B. Verificar si el serial está activo
     if (!registroSerial.activo) {
       return res
         .status(403)
-        .json({ error: "El Serial ERP existe, pero se encuentra INACTIVO." });
+        .json({
+          error:
+            "El Serial ERP existe, pero se encuentra marcado como INACTIVO.",
+        });
     }
 
-    // C. Verificar existencia y estado del cliente vinculado
     if (!registroSerial.clientes) {
       return res
         .status(404)
@@ -56,18 +77,16 @@ exports.generarClaveDesdeSerial = async (req, res) => {
     }
 
     if (!registroSerial.clientes.activo) {
-      return res
-        .status(403)
-        .json({
-          error: `El cliente [${registroSerial.clientes.nombre_comercial}] está INACTIVO/SUSPENDIDO.`,
-        });
+      return res.status(403).json({
+        error: `Acceso denegado: El cliente [${registroSerial.clientes.nombre_comercial}] está INACTIVO o SUSPENDIDO.`,
+      });
     }
 
-    // 3. Si pasó todas las validaciones, generamos la clave
+    // 3. Generación de la clave
     const datosConcatenados = `${serialERP}${pistaDos}${anoMedios}|${macServidor}`;
     const claveGenerada = generateMD5Hash(datosConcatenados);
 
-    // 4. Registrar activación
+    // 4. Registro de activación
     const ipOrigen =
       req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
 
@@ -81,12 +100,14 @@ exports.generarClaveDesdeSerial = async (req, res) => {
       },
     });
 
+    // 5. Respuesta
     res.json({
       serialERP,
       anoMedios,
       macServidor,
       claveGenerada,
-      cliente: registroSerial.cliente_id,
+      clienteNombre: registroSerial.clientes.nombre_comercial,
+      clienteId: registroSerial.cliente_id,
     });
   } catch (error) {
     console.error("Error en GenerarClave:", error);
