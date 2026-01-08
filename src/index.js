@@ -12,6 +12,7 @@ const ventasRoutes = require("./routes/ventasRoutes");
 const pagosRoutes = require("./routes/pagosRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const activacionRoutes = require("./routes/ActivacionRoutes");
+const claveMediosRoutes = require("./routes/claveMediosRoutes");
 const authRoutes = require("./routes/authRoutes");
 
 const app = express();
@@ -37,6 +38,7 @@ app.use("/api/ventas", ventasRoutes);
 app.use("/api/pagos", pagosRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/activaciones", activacionRoutes);
+app.use("/api/clave-medios", claveMediosRoutes);
 app.use("/api/auth", authRoutes);
 
 // Ruta de salud
