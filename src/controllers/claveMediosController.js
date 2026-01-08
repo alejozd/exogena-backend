@@ -52,22 +52,24 @@ exports.generarClaveDesdeSerial = async (req, res) => {
       },
     });
 
+    // --- CAMBIO AQUÍ: Mensaje con el serial decodificado ---
+    if (!registroSerial) {
+      return res.status(404).json({
+        error: `El Serial ERP [${serialERP}] no existe en la base de datos. Verifique que coincida exactamente.`,
+      });
+    }
+
     // Diagnóstico detallado
     if (!registroSerial) {
-      return res
-        .status(404)
-        .json({
-          error: "El Serial ERP ingresado no existe en nuestra base de datos.",
-        });
+      return res.status(404).json({
+        error: "El Serial ERP ingresado no existe en nuestra base de datos.",
+      });
     }
 
     if (!registroSerial.activo) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "El Serial ERP existe, pero se encuentra marcado como INACTIVO.",
-        });
+      return res.status(403).json({
+        error: "El Serial ERP existe, pero se encuentra marcado como INACTIVO.",
+      });
     }
 
     if (!registroSerial.clientes) {
