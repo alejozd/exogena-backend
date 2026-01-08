@@ -38,7 +38,7 @@ app.use("/api/ventas", ventasRoutes);
 app.use("/api/pagos", pagosRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/activaciones", activacionRoutes);
-app.use("/api/clave-medios", claveMediosRoutes);
+app.use("/api/generar-clave", claveMediosRoutes);
 app.use("/api/auth", authRoutes);
 
 // Ruta de salud
