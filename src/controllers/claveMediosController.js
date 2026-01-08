@@ -1,31 +1,16 @@
-const crypto = require("crypto");
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
-
-const decodeBase64 = (str) => Buffer.from(str, "base64").toString("utf-8");
-const generateMD5Hash = (data) =>
-  crypto.createHash("md5").update(data).digest("hex").toUpperCase();
-
 exports.generarClaveDesdeSerial = async (req, res) => {
   try {
     const { serial } = req.body;
-    console.log("--- INICIO GENERACIÓN CLAVE ---");
-    console.log("Serial Recibido (Base64):", serial);
-
     if (!serial)
       return res.status(400).json({ error: "El serial es requerido." });
 
-    // 1. Decodificar
+    // 1. Decodificación
     const pistaDos = "ZS8Q5TKU0";
     const decodedData = decodeBase64(serial);
-    console.log("Data Decodificada:", decodedData);
-
     const partes = decodedData.split(pistaDos);
 
-    if (partes.length < 2) {
-      console.log("ERROR: No se encontró la pista en el serial");
+    if (partes.length < 2)
       return res.status(400).json({ error: "Formato de serial inválido." });
-    }
 
     const serialERP = partes[0];
     const resto = partes[1];
@@ -34,47 +19,61 @@ exports.generarClaveDesdeSerial = async (req, res) => {
       ? resto.substring(5)
       : resto.substring(4);
 
-    console.log(
-      "Parsed -> SerialERP:",
-      serialERP,
-      "| Año:",
-      anoMedios,
-      "| MAC:",
-      macServidor
-    );
+    // 2. VALIDACIÓN PASO A PASO
 
-    // 2. Validar en la BD con Prisma
-    // IMPORTANTE: Se cambió 'activo: 1' por 'activo: true'
-    const serialDB = await prisma.seriales_erp.findFirst({
+    // A. Buscar el serial sin filtros de "activo" para saber si existe
+    const registroSerial = await prisma.seriales_erp.findFirst({
       where: {
         serial_erp: serialERP,
-        activo: true, // Prisma usa booleanos
         deleted_at: null,
-        clientes: { activo: true },
       },
-      include: { ventas: true },
+      include: {
+        clientes: true,
+        ventas: true,
+      },
     });
 
-    if (!serialDB) {
-      console.log("ERROR: Serial no encontrado o cliente inactivo en DB");
+    if (!registroSerial) {
       return res
         .status(404)
-        .json({ error: "Serial no encontrado o cliente inactivo." });
+        .json({
+          error: "El Serial ERP ingresado no existe en la base de datos.",
+        });
     }
 
-    // 3. Generar la Clave
+    // B. Verificar si el serial está activo
+    if (!registroSerial.activo) {
+      return res
+        .status(403)
+        .json({ error: "El Serial ERP existe, pero se encuentra INACTIVO." });
+    }
+
+    // C. Verificar existencia y estado del cliente vinculado
+    if (!registroSerial.clientes) {
+      return res
+        .status(404)
+        .json({ error: "El serial no tiene un cliente vinculado." });
+    }
+
+    if (!registroSerial.clientes.activo) {
+      return res
+        .status(403)
+        .json({
+          error: `El cliente [${registroSerial.clientes.nombre_comercial}] está INACTIVO/SUSPENDIDO.`,
+        });
+    }
+
+    // 3. Si pasó todas las validaciones, generamos la clave
     const datosConcatenados = `${serialERP}${pistaDos}${anoMedios}|${macServidor}`;
     const claveGenerada = generateMD5Hash(datosConcatenados);
-    console.log("Clave Generada con Éxito:", claveGenerada);
 
-    // 4. Registrar la activación
+    // 4. Registrar activación
     const ipOrigen =
       req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
 
-    // Asegúrate que el campo se llame clave_generated o clave_generada según tu DB
     await prisma.activaciones.create({
       data: {
-        venta_id: serialDB.ventas[0]?.id || null,
+        venta_id: registroSerial.ventas[0]?.id || null,
         mac_servidor: macServidor,
         clave_generated: claveGenerada,
         ip_origin: ipOrigen,
@@ -82,15 +81,12 @@ exports.generarClaveDesdeSerial = async (req, res) => {
       },
     });
 
-    console.log("Registro de activación guardado en DB");
-    console.log("--- FIN PROCESO ---");
-
     res.json({
       serialERP,
       anoMedios,
       macServidor,
       claveGenerada,
-      cliente: serialDB.cliente_id,
+      cliente: registroSerial.cliente_id,
     });
   } catch (error) {
     console.error("Error en GenerarClave:", error);
