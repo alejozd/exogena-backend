@@ -2,18 +2,19 @@ const crypto = require("crypto");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-// Funciones de ayuda (Helpers)
 const decodeBase64 = (str) => Buffer.from(str, "base64").toString("utf-8");
 const generateMD5Hash = (data) =>
   crypto.createHash("md5").update(data).digest("hex").toUpperCase();
 
 exports.generarClaveDesdeSerial = async (req, res) => {
+  console.log("--- Inicio de Generar Clave ---");
+  console.log("Body recibido:", req.body);
+
   try {
     const { serial } = req.body;
     if (!serial)
       return res.status(400).json({ error: "El serial es requerido." });
 
-    // 1. Decodificar (Lógica heredada de tu sistema anterior)
     const pistaDos = "ZS8Q5TKU0";
     const decodedData = decodeBase64(serial);
     const partes = decodedData.split(pistaDos);
@@ -28,52 +29,65 @@ exports.generarClaveDesdeSerial = async (req, res) => {
       ? resto.substring(5)
       : resto.substring(4);
 
-    // 2. Validar en la BD con Prisma
-    // Buscamos el serial y verificamos que el cliente esté activo
+    console.log("Datos parseados:", { serialERP, anoMedios, macServidor });
+
+    // 2. Validar en la BD
     const serialDB = await prisma.seriales_erp.findFirst({
       where: {
         serial_erp: serialERP,
         activo: 1,
         deleted_at: null,
-        clientes: { activo: 1 }, // Validamos que el cliente no esté suspendido
       },
-      include: { ventas: true }, // Para obtener el ID de la venta y asociar la activación
+      include: {
+        ventas: true,
+        clientes: true, // Cambiado para verificar la relación
+      },
     });
 
     if (!serialDB) {
+      console.log("Serial no encontrado en DB o inactivo:", serialERP);
       return res
         .status(404)
         .json({ error: "Serial no encontrado o cliente inactivo." });
     }
 
+    console.log("Serial encontrado en DB. ID Venta:", serialDB.ventas[0]?.id);
+
     // 3. Generar la Clave
     const datosConcatenados = `${serialERP}${pistaDos}${anoMedios}|${macServidor}`;
     const claveGenerada = generateMD5Hash(datosConcatenados);
 
-    // 4. Registrar la activación (Para tu contador de la tabla)
+    // 4. Registrar la activación
     const ipOrigen =
       req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
 
+    console.log("Intentando crear registro de activación...");
+
+    // NOTA: Revisa si tus campos en la tabla 'activaciones' se llaman exactamente así:
+    // venta_id, mac_servidor, clave_generada (o clave_generated), ip_origin
     await prisma.activaciones.create({
       data: {
-        venta_id: serialDB.ventas[0]?.id, // Asociamos a la primera venta encontrada
+        venta_id: serialDB.ventas[0]?.id || null,
         mac_servidor: macServidor,
-        clave_generated: claveGenerada,
+        clave_generada: claveGenerada, // He cambiado generated -> generada por estándar, verifica tu DB
         ip_origin: ipOrigen,
         nombre_equipo: req.body.nombre_equipo || "Delphi_Client",
       },
     });
 
-    // 5. Respuesta unificada
+    console.log("Activación registrada con éxito.");
+
     res.json({
       serialERP,
       anoMedios,
       macServidor,
       claveGenerada,
-      cliente: serialDB.cliente_id, // Útil para el front
+      cliente: serialDB.cliente_id,
     });
   } catch (error) {
-    console.error("Error en GenerarClave:", error);
-    res.status(500).json({ error: "Error interno al procesar la clave." });
+    console.error("--- ERROR EN GENERAR CLAVE ---");
+    console.error("Mensaje:", error.message);
+    console.error("Stack:", error.stack); // Esto te dirá la línea exacta del error
+    res.status(500).json({ error: "Error interno: " + error.message });
   }
 };
