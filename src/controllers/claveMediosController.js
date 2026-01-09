@@ -89,20 +89,22 @@ exports.generarClaveDesdeSerial = async (req, res) => {
     const claveGenerada = generateMD5Hash(datosConcatenados);
 
     // 4. Registro de activación
-    const ipOrigen =
+    const ipOrigenCalculada =
       req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
 
-    // Intentamos registrar la activación.
-    // Si venta_id es obligatorio en la DB y llega null, Prisma fallará.
+    // Obtenemos el ID de venta o null (asegúrate que venta_id sea opcional en schema.prisma)
+    const idVenta = registroSerial.ventas[0]?.id || null;
+
     await prisma.activaciones.create({
       data: {
-        // Usamos el nombre de la columna física de la tabla activaciones
-        // Si registroSerial.ventas[0] no existe, enviamos 0 o un ID genérico
-        // pero lo ideal es que la DB permita NULL.
-        venta_id: registroSerial.ventas[0]?.id || 0,
+        // 1. Usamos el nombre del campo escalar exacto
+        venta_id: idVenta,
+
+        // 2. Corregimos de ip_origin -> ip_origen
+        ip_origen: ipOrigenCalculada,
+
         mac_servidor: macServidor,
         clave_generada: claveGenerada,
-        ip_origin: ipOrigen,
         nombre_equipo: req.body.nombre_equipo || "Web_Client",
         fecha_activacion: new Date(),
       },
