@@ -92,15 +92,31 @@ exports.generarClaveDesdeSerial = async (req, res) => {
     const ipOrigen =
       req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
 
+    // Obtenemos el ID de la primera venta si existe
+    const ventaEncontrada =
+      registroSerial.ventas && registroSerial.ventas.length > 0
+        ? registroSerial.ventas[0].id
+        : null;
+
     await prisma.activaciones.create({
       data: {
-        venta_id: registroSerial.ventas[0]?.id || null,
+        // En Prisma, si la relación se llama "ventas", usamos connect
+        // Si ventaEncontrada es null, simplemente no enviamos el objeto para evitar errores de validación
+        ...(ventaEncontrada && {
+          ventas: {
+            connect: { id: ventaEncontrada },
+          },
+        }),
         mac_servidor: macServidor,
         clave_generada: claveGenerada,
         ip_origin: ipOrigen,
         nombre_equipo: req.body.nombre_equipo || "Web_Client",
+        // fecha_activacion se suele llenar sola por defecto en DB,
+        // pero si no, puedes agregar: fecha_activacion: new Date()
       },
     });
+
+    console.log("Registro de activación guardado exitosamente.");
 
     // 5. Respuesta
     res.json({
