@@ -96,7 +96,7 @@ exports.generarClaveDesdeSerial = async (req, res) => {
       data: {
         venta_id: registroSerial.ventas[0]?.id || null,
         mac_servidor: macServidor,
-        clave_generated: claveGenerada,
+        clave_generada: claveGenerada,
         ip_origin: ipOrigen,
         nombre_equipo: req.body.nombre_equipo || "Web_Client",
       },
