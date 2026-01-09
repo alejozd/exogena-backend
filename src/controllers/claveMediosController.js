@@ -10,116 +10,77 @@ const generateMD5Hash = (data) =>
 exports.generarClaveDesdeSerial = async (req, res) => {
   try {
     const { serial } = req.body;
-
     if (!serial)
       return res.status(400).json({ error: "El serial es requerido." });
 
     // 1. Decodificación
     const pistaDos = "ZS8Q5TKU0";
-    let decodedData;
-    try {
-      decodedData = decodeBase64(serial);
-    } catch (e) {
-      return res.status(400).json({ error: "El formato Base64 es inválido." });
-    }
-
+    const decodedData = decodeBase64(serial);
     const partes = decodedData.split(pistaDos);
 
-    if (partes.length < 2) {
-      return res
-        .status(400)
-        .json({ error: "Formato de serial inválido (Pista no encontrada)." });
-    }
+    if (partes.length < 2)
+      return res.status(400).json({ error: "Formato de serial inválido." });
 
     const serialERP = partes[0];
     const resto = partes[1];
     const anoMedios = resto.substring(0, 4);
-    let macServidor = resto.substring(4).startsWith("|")
+    const macServidor = resto.substring(4).startsWith("|")
       ? resto.substring(5)
       : resto.substring(4);
 
-    // 2. VALIDACIÓN PASO A PASO
-
-    // A. Buscar el serial (sin filtros de activo aún)
+    // 2. Búsqueda y Validación
     const registroSerial = await prisma.seriales_erp.findFirst({
-      where: {
-        serial_erp: serialERP,
-        deleted_at: null,
-      },
-      include: {
-        clientes: true,
-        ventas: true,
-      },
+      where: { serial_erp: serialERP, deleted_at: null },
+      include: { clientes: true, ventas: true },
     });
 
-    // --- CAMBIO AQUÍ: Mensaje con el serial decodificado ---
     if (!registroSerial) {
-      return res.status(404).json({
-        error: `El Serial ERP [${serialERP}] no existe en la base de datos. Verifique que coincida exactamente.`,
-      });
-    }
-
-    // Diagnóstico detallado
-    if (!registroSerial) {
-      return res.status(404).json({
-        error: "El Serial ERP ingresado no existe en nuestra base de datos.",
-      });
-    }
-
-    if (!registroSerial.activo) {
-      return res.status(403).json({
-        error: "El Serial ERP existe, pero se encuentra marcado como INACTIVO.",
-      });
-    }
-
-    if (!registroSerial.clientes) {
       return res
         .status(404)
-        .json({ error: "El serial no tiene un cliente vinculado." });
+        .json({
+          error: `El Serial [${serialERP}] no existe en la base de datos.`,
+        });
     }
 
-    if (!registroSerial.clientes.activo) {
-      return res.status(403).json({
-        error: `Acceso denegado: El cliente [${registroSerial.clientes.nombre_comercial}] está INACTIVO o SUSPENDIDO.`,
+    // --- NUEVA VALIDACIÓN: EL SERIAL EXISTE PERO NO TIENE VENTA ---
+    if (!registroSerial.ventas || registroSerial.ventas.length === 0) {
+      return res.status(412).json({
+        error: "Serial sin Venta Asociada",
+        detalles: `El serial ${serialERP} existe y pertenece a [${registroSerial.clientes?.nombre_comercial}], pero no tiene un registro de VENTA.`,
+        sugerencia:
+          "Debe crear la venta en el módulo administrativo antes de activar este producto.",
       });
     }
 
-    // 3. Generación de la clave
+    // 3. Generación de la Clave
     const datosConcatenados = `${serialERP}${pistaDos}${anoMedios}|${macServidor}`;
     const claveGenerada = generateMD5Hash(datosConcatenados);
 
-    // 4. Registro de activación
+    // 4. Registro de Activación (Corregido con ip_origen y nombres de Prisma)
     const ipOrigenCalculada =
       req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
 
-    // Obtenemos el ID de venta o null (asegúrate que venta_id sea opcional en schema.prisma)
-    const idVenta = registroSerial.ventas[0]?.id || null;
-
     await prisma.activaciones.create({
       data: {
-        // 1. Usamos el nombre del campo escalar exacto
-        venta_id: idVenta,
-
-        // 2. Corregimos de ip_origin -> ip_origen
-        ip_origen: ipOrigenCalculada,
-
+        // Como validamos arriba que existe, aquí siempre habrá un ID
+        ventas: {
+          connect: { id: registroSerial.ventas[0].id },
+        },
         mac_servidor: macServidor,
         clave_generada: claveGenerada,
+        ip_origen: ipOrigenCalculada,
         nombre_equipo: req.body.nombre_equipo || "Web_Client",
         fecha_activacion: new Date(),
       },
     });
 
-    console.log("Registro de activación guardado exitosamente.");
-
-    // 5. Respuesta
+    // 5. Respuesta Exitosa
     res.json({
       serialERP,
       anoMedios,
       macServidor,
       claveGenerada,
       clienteNombre: registroSerial.clientes.nombre_comercial,
-      clienteId: registroSerial.cliente_id,
     });
   } catch (error) {
     console.error("Error en GenerarClave:", error);
