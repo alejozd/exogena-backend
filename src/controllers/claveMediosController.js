@@ -92,27 +92,19 @@ exports.generarClaveDesdeSerial = async (req, res) => {
     const ipOrigen =
       req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
 
-    // Obtenemos el ID de la primera venta si existe
-    const ventaEncontrada =
-      registroSerial.ventas && registroSerial.ventas.length > 0
-        ? registroSerial.ventas[0].id
-        : null;
-
+    // Intentamos registrar la activación.
+    // Si venta_id es obligatorio en la DB y llega null, Prisma fallará.
     await prisma.activaciones.create({
       data: {
-        // En Prisma, si la relación se llama "ventas", usamos connect
-        // Si ventaEncontrada es null, simplemente no enviamos el objeto para evitar errores de validación
-        ...(ventaEncontrada && {
-          ventas: {
-            connect: { id: ventaEncontrada },
-          },
-        }),
+        // Usamos el nombre de la columna física de la tabla activaciones
+        // Si registroSerial.ventas[0] no existe, enviamos 0 o un ID genérico
+        // pero lo ideal es que la DB permita NULL.
+        venta_id: registroSerial.ventas[0]?.id || 0,
         mac_servidor: macServidor,
         clave_generada: claveGenerada,
         ip_origin: ipOrigen,
         nombre_equipo: req.body.nombre_equipo || "Web_Client",
-        // fecha_activacion se suele llenar sola por defecto en DB,
-        // pero si no, puedes agregar: fecha_activacion: new Date()
+        fecha_activacion: new Date(),
       },
     });
 
