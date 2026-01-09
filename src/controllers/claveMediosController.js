@@ -17,7 +17,6 @@ exports.generarClaveDesdeSerial = async (req, res) => {
     const pistaDos = "ZS8Q5TKU0";
     const decodedData = decodeBase64(serial);
     const partes = decodedData.split(pistaDos);
-
     if (partes.length < 2)
       return res.status(400).json({ error: "Formato de serial inválido." });
 
@@ -28,7 +27,7 @@ exports.generarClaveDesdeSerial = async (req, res) => {
       ? resto.substring(5)
       : resto.substring(4);
 
-    // 2. Búsqueda y Validación
+    // 2. Búsqueda de Serial y Cliente
     const registroSerial = await prisma.seriales_erp.findFirst({
       where: { serial_erp: serialERP, deleted_at: null },
       include: { clientes: true, ventas: true },
@@ -37,50 +36,55 @@ exports.generarClaveDesdeSerial = async (req, res) => {
     if (!registroSerial) {
       return res
         .status(404)
-        .json({
-          error: `El Serial [${serialERP}] no existe en la base de datos.`,
-        });
+        .json({ error: `El Serial [${serialERP}] no existe.` });
     }
 
-    // --- NUEVA VALIDACIÓN: EL SERIAL EXISTE PERO NO TIENE VENTA ---
-    if (!registroSerial.ventas || registroSerial.ventas.length === 0) {
-      return res.status(412).json({
-        error: "Serial sin Venta Asociada",
-        detalles: `El serial ${serialERP} existe y pertenece a [${registroSerial.clientes?.nombre_comercial}], pero no tiene un registro de VENTA.`,
-        sugerencia:
-          "Debe crear la venta en el módulo administrativo antes de activar este producto.",
-      });
-    }
-
-    // 3. Generación de la Clave
+    // 3. GENERACIÓN DE LA CLAVE (Esto ocurre siempre, haya venta o no)
     const datosConcatenados = `${serialERP}${pistaDos}${anoMedios}|${macServidor}`;
     const claveGenerada = generateMD5Hash(datosConcatenados);
 
-    // 4. Registro de Activación (Corregido con ip_origen y nombres de Prisma)
+    // 4. INTENTO DE REGISTRO (Opcional)
     const ipOrigenCalculada =
       req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
+    const ventaEncontrada =
+      registroSerial.ventas && registroSerial.ventas.length > 0
+        ? registroSerial.ventas[0].id
+        : null;
 
-    await prisma.activaciones.create({
-      data: {
-        // Como validamos arriba que existe, aquí siempre habrá un ID
-        ventas: {
-          connect: { id: registroSerial.ventas[0].id },
-        },
-        mac_servidor: macServidor,
-        clave_generada: claveGenerada,
-        ip_origen: ipOrigenCalculada,
-        nombre_equipo: req.body.nombre_equipo || "Web_Client",
-        fecha_activacion: new Date(),
-      },
-    });
+    let guardadoEnHistorial = false;
 
-    // 5. Respuesta Exitosa
+    if (ventaEncontrada) {
+      try {
+        await prisma.activaciones.create({
+          data: {
+            ventas: { connect: { id: ventaEncontrada } },
+            mac_servidor: macServidor,
+            clave_generada: claveGenerada,
+            ip_origen: ipOrigenCalculada,
+            nombre_equipo: req.body.nombre_equipo || "Web_Client",
+            fecha_activacion: new Date(),
+          },
+        });
+        guardadoEnHistorial = true;
+      } catch (dbError) {
+        console.error(
+          "No se pudo guardar la activación en DB:",
+          dbError.message
+        );
+      }
+    }
+
+    // 5. RESPUESTA (Siempre envía la clave)
     res.json({
       serialERP,
       anoMedios,
       macServidor,
       claveGenerada,
-      clienteNombre: registroSerial.clientes.nombre_comercial,
+      clienteNombre:
+        registroSerial.clientes?.nombre_comercial || "Cliente no vinculado",
+      info: guardadoEnHistorial
+        ? "Activación registrada con éxito."
+        : "Clave generada PERO NO GUARDADA (Serial no tiene venta asociada).",
     });
   } catch (error) {
     console.error("Error en GenerarClave:", error);
