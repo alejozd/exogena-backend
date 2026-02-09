@@ -7,8 +7,28 @@ const authController = {
     try {
       const { email, password } = req.body;
 
+      if (
+        typeof email !== "string" ||
+        !email.trim() ||
+        typeof password !== "string" ||
+        !password
+      ) {
+        return res.status(400).json({
+          error: "Email y contraseña son obligatorios",
+        });
+      }
+
+      if (!process.env.JWT_SECRET) {
+        console.error("JWT_SECRET no está configurado en las variables de entorno");
+        return res.status(500).json({ error: "Error de configuración del servidor" });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
       // 1. Buscar usuario
-      const usuario = await prisma.usuarios.findUnique({ where: { email } });
+      const usuario = await prisma.usuarios.findUnique({
+        where: { email: normalizedEmail },
+      });
       if (!usuario || usuario.activo === 0) {
         return res.status(401).json({ error: "Credenciales inválidas" });
       }
