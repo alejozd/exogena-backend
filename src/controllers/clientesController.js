@@ -1,10 +1,5 @@
 const prisma = require("../config/db");
 
-// Solución para el error de BigInt en JSON
-BigInt.prototype.toJSON = function () {
-  return this.toString();
-};
-
 const clientesController = {
   // Obtener todos los clientes
   getAll: async (req, res) => {

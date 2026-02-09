@@ -4,6 +4,13 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 
+// Permite serializar respuestas con IDs BigInt de Prisma sin lanzar errores de JSON.
+if (typeof BigInt.prototype.toJSON !== "function") {
+  BigInt.prototype.toJSON = function () {
+    return this.toString();
+  };
+}
+
 // Importar rutas
 const clientesRoutes = require("./routes/clientesRoutes");
 const vendedoresRoutes = require("./routes/vendedoresRoutes");
