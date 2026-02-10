@@ -1,6 +1,5 @@
 const crypto = require("crypto");
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../config/db");
 
 // --- FUNCIONES AUXILIARES (Indispensables) ---
 const decodeBase64 = (str) => Buffer.from(str, "base64").toString("utf-8");
