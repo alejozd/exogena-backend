@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const authController = {
   login: async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const { email, password } = req.body ?? {};
 
       if (
         typeof email !== "string" ||
@@ -43,7 +43,7 @@ const authController = {
         !validPassword &&
         typeof password === "string" &&
         password.includes(" ") &&
-        req.is("application/x-www-form-urlencoded")
+        req.is?.("application/x-www-form-urlencoded")
       ) {
         validPassword = await bcrypt.compare(
           password.replace(/ /g, "+"),
@@ -71,6 +71,7 @@ const authController = {
         },
       });
     } catch (error) {
+      console.error("Error en login:", error);
       res.status(500).json({ error: "Error en el servidor" });
     }
   },
