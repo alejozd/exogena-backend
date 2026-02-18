@@ -29,12 +29,28 @@ const authController = {
       const usuario = await prisma.usuarios.findUnique({
         where: { email: normalizedEmail },
       });
-      if (!usuario || usuario.activo === 0) {
+      if (!usuario || usuario.activo === 0 || usuario.activo === false) {
         return res.status(401).json({ error: "Credenciales inválidas" });
       }
 
       // 2. Verificar contraseña
-      const validPassword = await bcrypt.compare(password, usuario.password);
+      let validPassword = await bcrypt.compare(password, usuario.password);
+
+      // Si el login llega como x-www-form-urlencoded, el carácter '+'
+      // se decodifica como espacio. Probamos este fallback para
+      // contraseñas que incluyen '+' y evitar falsos negativos.
+      if (
+        !validPassword &&
+        typeof password === "string" &&
+        password.includes(" ") &&
+        req.is("application/x-www-form-urlencoded")
+      ) {
+        validPassword = await bcrypt.compare(
+          password.replace(/ /g, "+"),
+          usuario.password
+        );
+      }
+
       if (!validPassword) {
         return res.status(401).json({ error: "Credenciales inválidas" });
       }
