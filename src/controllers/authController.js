@@ -78,7 +78,12 @@ const findEmailsSimilares = async (normalizedEmail) => {
 const getLoginDebugContext = async () => {
   try {
     const [dbInfo] = await prisma.$queryRaw`
-      SELECT DATABASE() AS database_name, COUNT(*) AS total_usuarios
+      SELECT
+        DATABASE() AS database_name,
+        @@hostname AS mysql_host,
+        @@port AS mysql_port,
+        CURRENT_USER() AS mysql_user,
+        COUNT(*) AS total_usuarios
       FROM usuarios
     `;
 
@@ -91,6 +96,9 @@ const getLoginDebugContext = async () => {
 
     return {
       database: dbInfo?.database_name || null,
+      mysqlHost: dbInfo?.mysql_host || null,
+      mysqlPort: dbInfo?.mysql_port || null,
+      mysqlUser: dbInfo?.mysql_user || null,
       totalUsuarios: dbInfo?.total_usuarios ?? null,
       sampleEmails: sampleUsers.map((row) => row.email),
     };
