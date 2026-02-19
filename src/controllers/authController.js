@@ -27,7 +27,7 @@ const getUsuarioByEmail = async (normalizedEmail) => {
     const rows = await prisma.$queryRaw`
       SELECT id, nombre, email, password, rol, activo
       FROM usuarios
-      WHERE LOWER(email) = LOWER(${normalizedEmail})
+      WHERE LOWER(TRIM(email)) = LOWER(TRIM(${normalizedEmail}))
       LIMIT 1
     `;
 
@@ -45,7 +45,7 @@ const getUsuarioByEmail = async (normalizedEmail) => {
     const rows = await prisma.$queryRaw`
       SELECT id, nombre, email, password, rol, activo
       FROM usuarios
-      WHERE email = ${normalizedEmail}
+      WHERE LOWER(TRIM(email)) = LOWER(TRIM(${normalizedEmail}))
       LIMIT 1
     `;
 
@@ -62,7 +62,8 @@ const findEmailsSimilares = async (normalizedEmail) => {
     const rows = await prisma.$queryRaw`
       SELECT email
       FROM usuarios
-      WHERE email LIKE CONCAT('%', SUBSTRING_INDEX(${normalizedEmail}, '@', -1))
+      WHERE LOWER(email) LIKE LOWER(CONCAT('%', TRIM(${normalizedEmail}), '%'))
+         OR LOWER(email) LIKE LOWER(CONCAT('%@', SUBSTRING_INDEX(TRIM(${normalizedEmail}), '@', -1)))
       ORDER BY email ASC
       LIMIT 5
     `;
@@ -71,6 +72,32 @@ const findEmailsSimilares = async (normalizedEmail) => {
   } catch (error) {
     console.warn("No fue posible buscar emails similares:", error?.message || error);
     return [];
+  }
+};
+
+const getLoginDebugContext = async () => {
+  try {
+    const [dbInfo] = await prisma.$queryRaw`
+      SELECT DATABASE() AS database_name, COUNT(*) AS total_usuarios
+      FROM usuarios
+    `;
+
+    const sampleUsers = await prisma.$queryRaw`
+      SELECT email
+      FROM usuarios
+      ORDER BY id DESC
+      LIMIT 5
+    `;
+
+    return {
+      database: dbInfo?.database_name || null,
+      totalUsuarios: dbInfo?.total_usuarios ?? null,
+      sampleEmails: sampleUsers.map((row) => row.email),
+    };
+  } catch (error) {
+    return {
+      debugError: error?.message || String(error),
+    };
   }
 };
 
@@ -136,10 +163,15 @@ const authController = {
       // 1. Buscar usuario
       const usuario = await getUsuarioByEmail(normalizedEmail);
       if (!usuario) {
-        const similares = await findEmailsSimilares(normalizedEmail);
+        const [similares, debugContext] = await Promise.all([
+          findEmailsSimilares(normalizedEmail),
+          getLoginDebugContext(),
+        ]);
+
         console.warn("Login rechazado: usuario no encontrado", {
           emailSolicitado: normalizedEmail,
           emailsSimilares: similares,
+          debugContext,
         });
         return res.status(401).json({ error: "Credenciales inválidas" });
       }
