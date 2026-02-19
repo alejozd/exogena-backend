@@ -50,7 +50,9 @@ exports.generarClaveDesdeSerial = async (req, res) => {
 
     if (!ventaDelAno) {
       return res.status(404).json({
-        error: `No existe venta registrada para el año ${anoMedios}.`,
+        error: `No existe venta registrada para el año ${anoMedios}, 
+        o no existe venta para el serial [${serialERP}] 
+        y cliente [${registroSerial.clientes?.razon_social || "Cliente no vinculado"}].`,
       });
     }
 
