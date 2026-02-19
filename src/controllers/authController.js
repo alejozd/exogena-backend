@@ -56,6 +56,24 @@ const getUsuarioByEmail = async (normalizedEmail) => {
 const isBcryptHash = (value) =>
   typeof value === "string" && /^\$2[aby]\$\d{2}\$/.test(value);
 
+
+const findEmailsSimilares = async (normalizedEmail) => {
+  try {
+    const rows = await prisma.$queryRaw`
+      SELECT email
+      FROM usuarios
+      WHERE email LIKE CONCAT('%', SUBSTRING_INDEX(${normalizedEmail}, '@', -1))
+      ORDER BY email ASC
+      LIMIT 5
+    `;
+
+    return rows.map((row) => row.email);
+  } catch (error) {
+    console.warn("No fue posible buscar emails similares:", error?.message || error);
+    return [];
+  }
+};
+
 const verifyPassword = async ({ plainPassword, storedPassword, req }) => {
   if (typeof plainPassword !== "string" || typeof storedPassword !== "string") {
     return false;
@@ -118,7 +136,11 @@ const authController = {
       // 1. Buscar usuario
       const usuario = await getUsuarioByEmail(normalizedEmail);
       if (!usuario) {
-        console.warn("Login rechazado: usuario no encontrado", normalizedEmail);
+        const similares = await findEmailsSimilares(normalizedEmail);
+        console.warn("Login rechazado: usuario no encontrado", {
+          emailSolicitado: normalizedEmail,
+          emailsSimilares: similares,
+        });
         return res.status(401).json({ error: "Credenciales inválidas" });
       }
 
