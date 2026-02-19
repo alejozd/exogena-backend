@@ -2,7 +2,7 @@ const prisma = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const ROLES_VALIDOS = new Set(["admin", "vendedor"]);
+const ROLES_VALIDOS = new Set(["admin", "vendedor", "software"]);
 
 const isEnumRoleError = (error) => {
   const message = error?.message || "";
@@ -25,7 +25,7 @@ const getUsuarioByEmail = async (normalizedEmail) => {
 
     console.warn(
       "Usuario con valor de rol inválido para enum Prisma. Se usa fallback SQL para login:",
-      normalizedEmail
+      normalizedEmail,
     );
 
     const rows = await prisma.$queryRaw`
@@ -56,8 +56,12 @@ const authController = {
       }
 
       if (!process.env.JWT_SECRET) {
-        console.error("JWT_SECRET no está configurado en las variables de entorno");
-        return res.status(500).json({ error: "Error de configuración del servidor" });
+        console.error(
+          "JWT_SECRET no está configurado en las variables de entorno",
+        );
+        return res
+          .status(500)
+          .json({ error: "Error de configuración del servidor" });
       }
 
       const normalizedEmail = email.trim().toLowerCase();
@@ -82,7 +86,7 @@ const authController = {
       ) {
         validPassword = await bcrypt.compare(
           password.replace(/ /g, "+"),
-          usuario.password
+          usuario.password,
         );
       }
 
