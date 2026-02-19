@@ -15,9 +15,23 @@ const isEnumRoleError = (error) => {
 
 const getUsuarioByEmail = async (normalizedEmail) => {
   try {
-    return await prisma.usuarios.findUnique({
+    const usuario = await prisma.usuarios.findUnique({
       where: { email: normalizedEmail },
     });
+
+    if (usuario) {
+      return usuario;
+    }
+
+    // Fallback para bases/collations con email case-sensitive.
+    const rows = await prisma.$queryRaw`
+      SELECT id, nombre, email, password, rol, activo
+      FROM usuarios
+      WHERE LOWER(email) = LOWER(${normalizedEmail})
+      LIMIT 1
+    `;
+
+    return rows?.[0] || null;
   } catch (error) {
     if (!isEnumRoleError(error)) {
       throw error;
@@ -103,7 +117,14 @@ const authController = {
 
       // 1. Buscar usuario
       const usuario = await getUsuarioByEmail(normalizedEmail);
-      if (!usuario || usuario.activo === 0 || usuario.activo === false) {
+      if (!usuario) {
+        console.warn("Login rechazado: usuario no encontrado", normalizedEmail);
+        return res.status(401).json({ error: "Credenciales inválidas" });
+      }
+
+      const usuarioInactivo = [0, false, "0", "false"].includes(usuario.activo);
+      if (usuarioInactivo) {
+        console.warn("Login rechazado: usuario inactivo", normalizedEmail);
         return res.status(401).json({ error: "Credenciales inválidas" });
       }
 
@@ -115,6 +136,7 @@ const authController = {
       });
 
       if (!validPassword) {
+        console.warn("Login rechazado: contraseña inválida", normalizedEmail);
         return res.status(401).json({ error: "Credenciales inválidas" });
       }
 
