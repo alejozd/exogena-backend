@@ -39,6 +39,41 @@ const getUsuarioByEmail = async (normalizedEmail) => {
   }
 };
 
+const isBcryptHash = (value) =>
+  typeof value === "string" && /^\$2[aby]\$\d{2}\$/.test(value);
+
+const verifyPassword = async ({ plainPassword, storedPassword, req }) => {
+  if (typeof plainPassword !== "string" || typeof storedPassword !== "string") {
+    return false;
+  }
+
+  // 1) Flujo normal con bcrypt
+  if (isBcryptHash(storedPassword)) {
+    let validPassword = await bcrypt.compare(plainPassword, storedPassword);
+
+    // Si el login llega como x-www-form-urlencoded, el carácter '+'
+    // se decodifica como espacio. Probamos este fallback para
+    // contraseñas que incluyen '+' y evitar falsos negativos.
+    if (
+      !validPassword &&
+      plainPassword.includes(" ") &&
+      req.is?.("application/x-www-form-urlencoded")
+    ) {
+      validPassword = await bcrypt.compare(
+        plainPassword.replace(/ /g, "+"),
+        storedPassword,
+      );
+    }
+
+    if (validPassword) {
+      return true;
+    }
+  }
+
+  // 2) Fallback legacy: bases con contraseña sin hash
+  return plainPassword === storedPassword;
+};
+
 const authController = {
   login: async (req, res) => {
     try {
@@ -73,22 +108,11 @@ const authController = {
       }
 
       // 2. Verificar contraseña
-      let validPassword = await bcrypt.compare(password, usuario.password);
-
-      // Si el login llega como x-www-form-urlencoded, el carácter '+'
-      // se decodifica como espacio. Probamos este fallback para
-      // contraseñas que incluyen '+' y evitar falsos negativos.
-      if (
-        !validPassword &&
-        typeof password === "string" &&
-        password.includes(" ") &&
-        req.is?.("application/x-www-form-urlencoded")
-      ) {
-        validPassword = await bcrypt.compare(
-          password.replace(/ /g, "+"),
-          usuario.password,
-        );
-      }
+      const validPassword = await verifyPassword({
+        plainPassword: password,
+        storedPassword: usuario.password,
+        req,
+      });
 
       if (!validPassword) {
         return res.status(401).json({ error: "Credenciales inválidas" });
