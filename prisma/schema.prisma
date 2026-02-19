@@ -149,4 +149,5 @@ enum ventas_estado_pago {
 enum usuarios_rol {
   admin
   vendedor
+  software
 }
