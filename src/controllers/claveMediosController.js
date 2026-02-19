@@ -34,9 +34,10 @@ exports.generarClaveDesdeSerial = async (req, res) => {
     });
 
     if (!registroSerial) {
-      return res
-        .status(404)
-        .json({ error: `El Serial [${serialERP}] no existe.` });
+      return res.status(404).json({
+        error: `El Serial [${serialERP}] no existe, 
+          para el cliente [${registroSerial.clientes?.razon_social || "Cliente no vinculado"}].`,
+      });
     }
 
     // 3. Buscar venta del año
