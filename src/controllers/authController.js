@@ -94,7 +94,8 @@ const authController = {
         return res.status(401).json({ error: "Credenciales inválidas" });
       }
 
-      const rol = ROLES_VALIDOS.has(usuario.rol) ? usuario.rol : "vendedor";
+      const rolUsuario = String(usuario.rol ?? "").trim().toLowerCase();
+      const rol = ROLES_VALIDOS.has(rolUsuario) ? rolUsuario : "vendedor";
 
       // 3. Generar JWT
       const token = jwt.sign({ id: usuario.id, rol }, process.env.JWT_SECRET, {
