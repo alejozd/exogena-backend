@@ -49,7 +49,7 @@ exports.generarClaveDesdeSerial = async (req, res) => {
     });
 
     if (!ventaDelAno) {
-      return res.status(403).json({
+      return res.status(404).json({
         error: `No existe venta registrada para el año ${anoMedios}.`,
       });
     }
