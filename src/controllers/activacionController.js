@@ -46,6 +46,7 @@ const activacionController = {
     try {
       const {
         venta_id,
+        serial_recibido,
         mac_servidor,
         clave_generada,
         ip_origen,
@@ -60,6 +61,7 @@ const activacionController = {
       await prisma.activaciones.create({
         data: {
           venta_id: BigInt(venta_id),
+          serial_recibido: serial_recibido || null,
           mac_servidor,
           clave_generada,
           ip_origen,

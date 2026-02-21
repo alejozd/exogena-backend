@@ -68,6 +68,7 @@ const claveMediosController = {
     await prisma.activaciones.create({
       data: {
         ventas: { connect: { id: ventaDelAno.id } },
+        serial_recibido: serial,
         mac_servidor: macServidor,
         clave_generada: claveGenerada,
         ip_origen: ipOrigenCalculada,

@@ -10,6 +10,7 @@ datasource db {
 model activaciones {
   id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
   venta_id         BigInt    @db.UnsignedBigInt
+  serial_recibido  String?   @db.VarChar(500)
   mac_servidor     String    @db.VarChar(17)
   clave_generada   String    @db.VarChar(32)
   ip_origen        String?   @db.VarChar(45)
