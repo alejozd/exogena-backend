@@ -65,6 +65,13 @@ Todas las rutas de gestión están protegidas por un middleware de autenticació
 * **Rate limiting**: El endpoint de login limita a 5 intentos por minuto por IP.
 * **CORS**: Configurable vía `CORS_ORIGIN` en `.env` (en producción, especifica orígenes permitidos).
 
+## 🧪 Tests
+```bash
+npm test              # Ejecutar todos los tests
+npm run test:watch    # Modo watch (re-ejecuta al cambiar archivos)
+npm run test:coverage # Con reporte de cobertura
+```
+
 ## 📜 Scripts útiles
 * `npm run crear-usuario`: Crea un usuario. Configurar con `CREAR_USUARIO_NOMBRE`, `CREAR_USUARIO_EMAIL`, `CREAR_USUARIO_PASSWORD`, `CREAR_USUARIO_ROL`.
 
