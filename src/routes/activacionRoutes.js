@@ -7,6 +7,7 @@ router.use(verifyToken);
 
 router.get("/", activacionController.getAll);
 router.get("/venta/:venta_id", activacionController.getByVenta);
+router.get("/:id", activacionController.getById);
 router.post("/", activacionController.create);
 router.delete("/:id", activacionController.delete);
 
