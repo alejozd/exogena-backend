@@ -25,6 +25,10 @@ const authRoutes = require("./routes/authRoutes");
 const app = express();
 const PORT = process.env.PORT || 3421;
 
+// Trust proxy: necesario cuando la app está detrás de Nginx, Apache, etc.
+// Permite que express-rate-limit y req.socket.remoteAddress usen la IP real del cliente (X-Forwarded-For)
+app.set("trust proxy", 1);
+
 // Middlewares globales
 app.use(helmet());
 const corsOrigin = process.env.CORS_ORIGIN || "*";
