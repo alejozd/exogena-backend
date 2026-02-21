@@ -64,14 +64,18 @@ const serialesController = {
     try {
       const { id } = req.params;
       const { serial_erp, nombre_software, activo, cliente_id } = req.body;
+      const data = {
+        ...(serial_erp !== undefined && { serial_erp }),
+        ...(nombre_software !== undefined && { nombre_software }),
+        ...(activo !== undefined && { activo: activo === false || activo === 0 ? false : true }),
+        ...(cliente_id != null && cliente_id !== "" && { cliente_id: BigInt(cliente_id) }),
+      };
+      if (Object.keys(data).length === 0) {
+        return res.status(400).json({ error: "No hay campos válidos para actualizar" });
+      }
       const actualizado = await prisma.seriales_erp.update({
         where: { id: BigInt(id) },
-        data: {
-          serial_erp,
-          nombre_software,
-          activo: activo === false || activo === 0 ? false : true,
-          cliente_id: BigInt(cliente_id),
-        },
+        data,
       });
       res.json(actualizado);
     } catch (error) {

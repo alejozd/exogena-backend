@@ -7,11 +7,13 @@
     "dev": "nodemon src/index.js",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "crear-usuario": "node scripts/crearUsuario.js"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
     "bcryptjs": "^3.0.3",
+    "express-rate-limit": "^7.5.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
@@ -21,6 +23,7 @@
     "mysql2": "^3.16.0"
   },
   "devDependencies": {
+    "eslint": "^8.57.0",
     "nodemon": "^3.1.11",
     "prisma": "5.22.0"
   }

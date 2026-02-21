@@ -6,7 +6,8 @@ const decodeBase64 = (str) => Buffer.from(str, "base64").toString("utf-8");
 const generateMD5Hash = (data) =>
   crypto.createHash("md5").update(data).digest("hex").toUpperCase();
 
-exports.generarClaveDesdeSerial = async (req, res) => {
+const claveMediosController = {
+  generarClaveDesdeSerial: async (req, res) => {
   try {
     const { serial } = req.body;
     if (!serial)
@@ -35,8 +36,7 @@ exports.generarClaveDesdeSerial = async (req, res) => {
 
     if (!registroSerial) {
       return res.status(404).json({
-        error: `El Serial [${serialERP}] no existe, 
-          para el cliente [${registroSerial.clientes?.razon_social || "Cliente no vinculado"}].`,
+        error: `El Serial [${serialERP}] no existe en el sistema.`,
       });
     }
 
@@ -90,4 +90,7 @@ exports.generarClaveDesdeSerial = async (req, res) => {
     console.error("Error en GenerarClave:", error);
     res.status(500).json({ error: "Error interno al procesar la clave." });
   }
+  },
 };
+
+module.exports = claveMediosController;

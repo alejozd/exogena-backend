@@ -18,7 +18,7 @@ const serialesRoutes = require("./routes/serialesRoutes");
 const ventasRoutes = require("./routes/ventasRoutes");
 const pagosRoutes = require("./routes/pagosRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
-const activacionRoutes = require("./routes/ActivacionRoutes");
+const activacionRoutes = require("./routes/activacionRoutes");
 const claveMediosRoutes = require("./routes/claveMediosRoutes");
 const authRoutes = require("./routes/authRoutes");
 
@@ -27,9 +27,10 @@ const PORT = process.env.PORT || 3421;
 
 // Middlewares globales
 app.use(helmet());
+const corsOrigin = process.env.CORS_ORIGIN || "*";
 app.use(
   cors({
-    origin: "*", // En producción podrías limitarlo a "https://exogena.zdevs.uk"
+    origin: corsOrigin === "*" ? "*" : corsOrigin.split(",").map((o) => o.trim()),
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })

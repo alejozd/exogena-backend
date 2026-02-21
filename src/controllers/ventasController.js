@@ -146,7 +146,7 @@ const ventasController = {
     try {
       const { id } = req.params;
       const venta = await prisma.ventas.findUnique({
-        where: { id: parseInt(id) },
+        where: { id: BigInt(id) },
         include: {
           clientes: true,
           vendedores: true,
@@ -179,7 +179,7 @@ const ventasController = {
       const data = req.body;
 
       const ventaActualizada = await prisma.ventas.update({
-        where: { id: parseInt(id) },
+        where: { id: BigInt(id) },
         data: {
           cliente_id: BigInt(data.cliente_id),
           vendedor_id: data.vendedor_id ? parseInt(data.vendedor_id) : null,

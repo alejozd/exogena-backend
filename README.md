@@ -62,5 +62,11 @@ Sistema de gestión para la generación de reportes de información exógena. Es
 Todas las rutas de gestión están protegidas por un middleware de autenticación. Es necesario incluir el token en los headers:
 `Authorization: Bearer <tu_token>`
 
+* **Rate limiting**: El endpoint de login limita a 5 intentos por minuto por IP.
+* **CORS**: Configurable vía `CORS_ORIGIN` en `.env` (en producción, especifica orígenes permitidos).
+
+## 📜 Scripts útiles
+* `npm run crear-usuario`: Crea un usuario. Configurar con `CREAR_USUARIO_NOMBRE`, `CREAR_USUARIO_EMAIL`, `CREAR_USUARIO_PASSWORD`, `CREAR_USUARIO_ROL`.
+
 ---
 Desarrollado con ❤️ para la gestión contable.
