@@ -24,6 +24,40 @@ const activacionController = {
     }
   },
 
+  getById: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: "ID requerido" });
+      }
+
+      const row = await prisma.activaciones.findFirst({
+        where: {
+          id: BigInt(id),
+          deleted_at: null,
+        },
+        include: {
+          ventas: {
+            include: {
+              clientes: true,
+              seriales_erp: true,
+            },
+          },
+        },
+      });
+
+      if (!row) {
+        return res.status(404).json({ error: "Activación no encontrada" });
+      }
+
+      res.json(serializeBigInt(row));
+    } catch (error) {
+      console.error("Error en getById activaciones:", error);
+      res.status(500).json({ error: "Error al obtener la activación" });
+    }
+  },
+
   getByVenta: async (req, res) => {
     try {
       const { venta_id } = req.params;
