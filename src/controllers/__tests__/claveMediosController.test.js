@@ -62,6 +62,30 @@ describe("claveMediosController - generarClaveDesdeSerial", () => {
     });
   });
 
+  it("retorna 403 si la venta del año está inactiva", async () => {
+    const serial = buildSerial("SERIAL1", "2025", "AA:BB:CC:DD:EE:FF");
+    req.body = { serial };
+    prisma.seriales_erp.findFirst.mockResolvedValue({
+      id: BigInt(1),
+      serial_erp: "SERIAL1",
+      clientes: { razon_social: "Cliente Test" },
+    });
+    prisma.ventas.findFirst.mockResolvedValue({
+      id: BigInt(10),
+      activo: false,
+    });
+
+    await claveMediosController.generarClaveDesdeSerial(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.stringContaining("está inactiva"),
+      })
+    );
+    expect(prisma.activaciones.create).not.toHaveBeenCalled();
+  });
+
   it("retorna 404 si no hay venta para el año", async () => {
     const serial = buildSerial("SERIAL1", "2024", "AA:BB:CC:DD:EE:FF");
     req.body = { serial };
@@ -95,7 +119,7 @@ describe("claveMediosController - generarClaveDesdeSerial", () => {
       serial_erp: serialERP,
       clientes: { razon_social: "Cliente Test" },
     });
-    prisma.ventas.findFirst.mockResolvedValue({ id: ventaId });
+    prisma.ventas.findFirst.mockResolvedValue({ id: ventaId, activo: true });
     prisma.activaciones.create.mockResolvedValue({});
 
     await claveMediosController.generarClaveDesdeSerial(req, res);

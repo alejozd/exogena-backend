@@ -92,6 +92,7 @@ const ventasController = {
         fecha_venta,
         valor_total,
         estado_pago,
+        activo,
         observaciones,
       } = req.body;
 
@@ -105,6 +106,7 @@ const ventasController = {
           fecha_venta: new Date(fecha_venta), // Formato esperado "YYYY-MM-DD"
           valor_total: parseFloat(valor_total),
           estado_pago: estado_pago || "pendiente",
+          activo: activo === false || activo === 0 ? false : true,
           observaciones,
         },
       });
@@ -178,18 +180,23 @@ const ventasController = {
       const { id } = req.params;
       const data = req.body;
 
+      const dataUpdate = {
+        cliente_id: BigInt(data.cliente_id),
+        vendedor_id: data.vendedor_id ? parseInt(data.vendedor_id) : null,
+        serial_erp_id: BigInt(data.serial_erp_id),
+        ano_gravable: parseInt(data.ano_gravable),
+        ano_venta: parseInt(data.ano_venta),
+        fecha_venta: new Date(data.fecha_venta),
+        valor_total: parseFloat(data.valor_total),
+        observaciones: data.observaciones,
+      };
+      if (data.activo !== undefined) {
+        dataUpdate.activo = data.activo === false || data.activo === 0 ? false : true;
+      }
+
       const ventaActualizada = await prisma.ventas.update({
         where: { id: BigInt(id) },
-        data: {
-          cliente_id: BigInt(data.cliente_id),
-          vendedor_id: data.vendedor_id ? parseInt(data.vendedor_id) : null,
-          serial_erp_id: BigInt(data.serial_erp_id),
-          ano_gravable: parseInt(data.ano_gravable),
-          ano_venta: parseInt(data.ano_venta),
-          fecha_venta: new Date(data.fecha_venta),
-          valor_total: parseFloat(data.valor_total),
-          observaciones: data.observaciones,
-        },
+        data: dataUpdate,
       });
 
       res.json(ventaActualizada);

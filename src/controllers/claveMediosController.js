@@ -57,6 +57,13 @@ const claveMediosController = {
       });
     }
 
+    if (ventaDelAno.activo === false) {
+      return res.status(403).json({
+        error: `La licencia del serial [${serialERP}] para el año ${anoMedios} está inactiva. 
+        Contacte al administrador para activarla.`,
+      });
+    }
+
     // 4. Generar clave
     const datosConcatenados = `${serialERP}${pistaDos}${anoMedios}|${macServidor}`;
     const claveGenerada = generateMD5Hash(datosConcatenados);
